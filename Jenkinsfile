@@ -1,82 +1,87 @@
 pipeline {
-    agent any 
-    
-    tools{
-        jdk 'jdk11'
-        maven 'maven3'
+  agent any
+
+  tools {
+    maven 'maven3'
+  }
+
+  environment {
+    IMAGE_NAME = "samardhawan17/petclinic"
+    IMAGE_TAG  = "${BUILD_NUMBER}"
+    K8S_IP     = "YOUR_K8S_PUBLIC_IP"
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        git branch: 'main',
+            url: 'https://github.com/SAMARDHAWAN17/Petclinic.git',
+            credentialsId: 'github-creds'
+      }
     }
-    
-    environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+
+    stage('Maven Build') {
+      steps {
+        sh 'mvn clean package -DskipTests'
+      }
     }
-    
-    stages{
-        
-        stage("Git Checkout"){
-            steps{
-                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/jaiswaladi246/Petclinic.git'
-            }
+
+    stage('SonarQube Scan') {
+      environment {
+        SONAR_TOKEN = credentials('sonar-token')
+      }
+      steps {
+        withSonarQubeEnv('sonarqube') {
+          sh '''
+            mvn sonar:sonar \
+            -Dsonar.projectKey=petclinic \
+            -Dsonar.login=$SONAR_TOKEN
+          '''
         }
-        
-        stage("Compile"){
-            steps{
-                sh "mvn clean compile"
-            }
-        }
-        
-         stage("Test Cases"){
-            steps{
-                sh "mvn test"
-            }
-        }
-        
-        stage("Sonarqube Analysis "){
-            steps{
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petclinic \
-                    -Dsonar.java.binaries=. \
-                    -Dsonar.projectKey=Petclinic '''
-    
-                }
-            }
-        }
-        
-        stage("OWASP Dependency Check"){
-            steps{
-                dependencyCheck additionalArguments: '--scan ./ --format HTML ', odcInstallation: 'DP'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        
-         stage("Build"){
-            steps{
-                sh " mvn clean install"
-            }
-        }
-        
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: '58be877c-9294-410e-98ee-6a959d73b352', toolName: 'docker') {
-                        
-                        sh "docker build -t image1 ."
-                        sh "docker tag image1 adijaiswal/pet-clinic123:latest "
-                        sh "docker push adijaiswal/pet-clinic123:latest "
-                    }
-                }
-            }
-        }
-        
-        stage("TRIVY"){
-            steps{
-                sh " trivy image adijaiswal/pet-clinic123:latest"
-            }
-        }
-        
-        stage("Deploy To Tomcat"){
-            steps{
-                sh "cp  /var/lib/jenkins/workspace/CI-CD/target/petclinic.war /opt/apache-tomcat-9.0.65/webapps/ "
-            }
-        }
+      }
     }
+
+    stage('Docker Build') {
+      steps {
+        sh '''
+          docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+        '''
+      }
+    }
+
+    stage('Trivy Scan') {
+      steps {
+        sh 'trivy image --exit-code 0 $IMAGE_NAME:$IMAGE_TAG'
+      }
+    }
+
+    stage('Docker Push') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh '''
+            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+            docker push $IMAGE_NAME:$IMAGE_TAG
+            docker push $IMAGE_NAME:latest
+          '''
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh """
+          ssh -o StrictHostKeyChecking=no ubuntu@${K8S_IP} '
+            kubectl set image deployment/petclinic petclinic=$IMAGE_NAME:$IMAGE_TAG
+            kubectl rollout status deployment/petclinic
+          '
+        """
+      }
+    }
+  }
 }
