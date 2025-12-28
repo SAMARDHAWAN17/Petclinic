@@ -2,8 +2,13 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven3'
-        jdk 'Java17'
+        maven 'Maven'              // Jenkins → Manage Jenkins → Tools → Maven ka NAME
+        jdk 'JDK17'                // Agar JDK configured hai (optional)
+    }
+
+    environment {
+        SONAR_PROJECT_KEY = "petclinic"
+        SONAR_PROJECT_NAME = "petclinic"
     }
 
     stages {
@@ -15,21 +20,23 @@ pipeline {
             }
         }
 
-        stage('Maven Build') {
+        stage('Build & Test') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean verify'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 script {
+                    // 🔥 SonarScanner TOOL ka NAME (same as Jenkins Tools)
                     def scannerHome = tool 'SonarScanner'
+
                     withSonarQubeEnv('SonarQube') {
                         sh """
-                        ${scannerHome}/bin/sonarscanner \
-                        -Dsonar.projectKey=petclinic \
-                        -Dsonar.projectName=petclinic \
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                        -Dsonar.projectName=${SONAR_PROJECT_NAME} \
                         -Dsonar.sources=src \
                         -Dsonar.java.binaries=target
                         """
@@ -38,4 +45,10 @@ pipeline {
             }
         }
     }
-}
+
+    post {
+        success {
+            echo "✅ Pipeline SUCCESSFUL"
+        }
+        failure {
+            ech
