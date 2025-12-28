@@ -25,13 +25,14 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                    mvn sonar:sonar \
+                    mvn clean verify sonar:sonar \
                     -Dsonar.projectKey=petclinic \
-                    -Dsonar.projectName=petclinic
+                    -Dsonar.projectName=petclinic \
+                    -Dsonar.host.url=http://localhost:9000 \
+                    -Dsonar.login=$SONAR_AUTH_TOKEN
                     '''
                 }
             }
         }
     }
 }
-
