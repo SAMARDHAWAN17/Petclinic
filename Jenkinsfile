@@ -23,14 +23,17 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    sonar-scanner \
-                    -Dsonar.projectKey=petclinic \
-                    -Dsonar.projectName=petclinic \
-                    -Dsonar.sources=src \
-                    -Dsonar.java.binaries=target
-                    '''
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=petclinic \
+                        -Dsonar.projectName=petclinic \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=target
+                        """
+                    }
                 }
             }
         }
