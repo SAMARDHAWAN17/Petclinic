@@ -4,6 +4,7 @@ pipeline {
     tools {
         maven 'Maven3'
         jdk 'Java17'
+        sonarScanner 'SonarScanner'
     }
 
     stages {
@@ -15,7 +16,7 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Maven Build') {
             steps {
                 sh 'mvn clean package'
             }
@@ -25,11 +26,11 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                    mvn clean verify sonar:sonar \
+                    sonar-scanner \
                     -Dsonar.projectKey=petclinic \
                     -Dsonar.projectName=petclinic \
-                    -Dsonar.host.url=http://localhost:9000 \
-                    -Dsonar.login=$SONAR_AUTH_TOKEN
+                    -Dsonar.sources=src \
+                    -Dsonar.java.binaries=target
                     '''
                 }
             }
