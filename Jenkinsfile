@@ -1,7 +1,6 @@
 pipeline {
     agent any
 
-    // 🛡️ SAFETY – hang nahi hone dega
     options {
         timeout(time: 20, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -30,23 +29,24 @@ pipeline {
 
         stage('Maven Build & Test') {
             steps {
-                sh 'mvn clean package -DskipTests=false'
+                sh 'mvn clean package'
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('SonarQube Analysis (Docker-based)') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                        ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=petclinic \
-                        -Dsonar.projectName=petclinic \
-                        -Dsonar.sources=src \
-                        -Dsonar.java.binaries=target
-                        """
-                    }
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    docker run --rm \
+                      -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                      -e SONAR_LOGIN=$SONAR_AUTH_TOKEN \
+                      -v "$(pwd):/usr/src" \
+                      sonarsource/sonar-scanner-cli:4.8 \
+                      -Dsonar.projectKey=petclinic \
+                      -Dsonar.projectName=petclinic \
+                      -Dsonar.sources=src \
+                      -Dsonar.java.binaries=target
+                    '''
                 }
             }
         }
@@ -64,34 +64,4 @@ pipeline {
                 sh '''
                 trivy image \
                 --severity HIGH,CRITICAL \
-                --timeout 5m \
-                --exit-code 0 \
-                --no-progress \
-                $IMAGE_NAME:$IMAGE_TAG
-                '''
-            }
-        }
-
-        stage('DockerHub Push') {
-            steps {
-                withDockerRegistry(credentialsId: 'dockerhub-creds', url: '') {
-                    sh '''
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                    '''
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ CI/CD pipeline completed successfully"
-        }
-        failure {
-            echo "❌ Pipeline failed"
-        }
-        always {
-            echo "📦 Pipeline finished"
-        }
-    }
-}
+                --timeout 5m
