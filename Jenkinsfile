@@ -13,7 +13,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "<samardhawan17>/petclinic"
+        IMAGE_NAME = "<DOCKERHUB_USERNAME>/petclinic"
         IMAGE_TAG  = "latest"
         MAVEN_OPTS = "-Xmx512m"
     }
@@ -33,35 +33,4 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis (Docker-based)') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    docker run --rm \
-                      -e SONAR_HOST_URL=$SONAR_HOST_URL \
-                      -e SONAR_LOGIN=$SONAR_AUTH_TOKEN \
-                      -v "$(pwd):/usr/src" \
-                      sonarsource/sonar-scanner-cli:4.8 \
-                      -Dsonar.projectKey=petclinic \
-                      -Dsonar.projectName=petclinic \
-                      -Dsonar.sources=src \
-                      -Dsonar.java.binaries=target
-                    '''
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh '''
-                docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                '''
-            }
-        }
-
-        stage('Trivy Image Scan (SAFE)') {
-            steps {
-                sh '''
-                trivy image \
-                --severity HIGH,CRITICAL \
-                --timeout 5m
+        stage('SonarQube Anal
