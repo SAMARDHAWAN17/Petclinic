@@ -15,10 +15,23 @@ pipeline {
             }
         }
 
-        stage('Maven Build') {
+        stage('Build') {
             steps {
                 sh 'mvn clean package'
             }
         }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=petclinic \
+                    -Dsonar.projectName=petclinic
+                    '''
+                }
+            }
+        }
     }
 }
+
