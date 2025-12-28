@@ -2,12 +2,12 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven'              // Jenkins → Manage Jenkins → Tools → Maven ka NAME
-        jdk 'JDK17'                // Agar JDK configured hai (optional)
+        maven 'Maven3'     // ✅ Jenkins me configured name
+        jdk 'Java17'       // ✅ Jenkins me configured name
     }
 
     environment {
-        SONAR_PROJECT_KEY = "petclinic"
+        SONAR_PROJECT_KEY  = "petclinic"
         SONAR_PROJECT_NAME = "petclinic"
     }
 
@@ -29,7 +29,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // 🔥 SonarScanner TOOL ka NAME (same as Jenkins Tools)
+                    // ✅ SonarScanner ka EXACT tool name
                     def scannerHome = tool 'SonarScanner'
 
                     withSonarQubeEnv('SonarQube') {
@@ -48,10 +48,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline SUCCESSFUL"
+            echo "✅ Jenkins Pipeline SUCCESSFUL"
         }
         failure {
-            echo "❌ Pipeline FAILED"
+            echo "❌ Jenkins Pipeline FAILED"
         }
     }
 }
