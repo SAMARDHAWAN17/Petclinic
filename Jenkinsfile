@@ -2,13 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven3'     // ✅ Jenkins me configured name
-        jdk 'Java17'       // ✅ Jenkins me configured name
-    }
-
-    environment {
-        SONAR_PROJECT_KEY  = "petclinic"
-        SONAR_PROJECT_NAME = "petclinic"
+        maven 'Maven3'
+        jdk 'Java17'
     }
 
     stages {
@@ -20,23 +15,21 @@ pipeline {
             }
         }
 
-        stage('Build & Test') {
+        stage('Maven Build & Test') {
             steps {
-                sh 'mvn clean verify'
+                sh 'mvn clean package'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // ✅ SonarScanner ka EXACT tool name
                     def scannerHome = tool 'SonarScanner'
-
                     withSonarQubeEnv('SonarQube') {
                         sh """
                         ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                        -Dsonar.projectKey=petclinic \
+                        -Dsonar.projectName=petclinic \
                         -Dsonar.sources=src \
                         -Dsonar.java.binaries=target
                         """
@@ -44,14 +37,19 @@ pipeline {
                 }
             }
         }
+
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                trivy fs --exit-code 0 --severity HIGH,CRITICAL .
+                '''
+            }
+        }
     }
 
     post {
-        success {
-            echo "✅ Jenkins Pipeline SUCCESSFUL"
-        }
-        failure {
-            echo "❌ Jenkins Pipeline FAILED"
+        always {
+            echo "Pipeline completed"
         }
     }
 }
