@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        timeout(time: 30, unit: 'MINUTES')   // build kabhi hang nahi hogi
+    }
+
     tools {
         maven 'Maven3'
         jdk 'Java17'
@@ -17,7 +21,7 @@ pipeline {
 
         stage('Maven Build & Test') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean package -DskipTests=false'
             }
         }
 
@@ -38,15 +42,27 @@ pipeline {
             }
         }
 
-  stage('Trivy Security Scan') {
-    steps {
-        sh '''
-        trivy fs \
-        --skip-dirs .git,target,.m2,node_modules \
-        --severity HIGH,CRITICAL \
-        --timeout 5m \
-        --exit-code 0 \
-        .
-        '''
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                trivy fs . \
+                --severity HIGH,CRITICAL \
+                --exit-code 0 \
+                --no-progress
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline completed successfully"
+        }
+        failure {
+            echo "❌ Pipeline failed"
+        }
+        always {
+            echo "📦 Pipeline finished"
+        }
     }
 }
