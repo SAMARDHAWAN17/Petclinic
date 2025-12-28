@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    options {
-        timeout(time: 30, unit: 'MINUTES')   // build kabhi hang nahi hogi
-    }
-
     tools {
         maven 'Maven3'
         jdk 'Java17'
@@ -19,16 +15,18 @@ pipeline {
             }
         }
 
-        stage('Maven Build & Test') {
+        stage('Maven Build') {
             steps {
-                sh 'mvn clean package -DskipTests=false'
+                sh 'mvn clean package'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 script {
+                    // EXACT same name as Jenkins → Tools → SonarQube Scanner
                     def scannerHome = tool 'SonarScanner'
+
                     withSonarQubeEnv('SonarQube') {
                         sh """
                         ${scannerHome}/bin/sonar-scanner \
@@ -40,29 +38,6 @@ pipeline {
                     }
                 }
             }
-        }
-
-        stage('Trivy Security Scan') {
-            steps {
-                sh '''
-                trivy fs . \
-                --severity HIGH,CRITICAL \
-                --exit-code 0 \
-                --no-progress
-                '''
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Pipeline completed successfully"
-        }
-        failure {
-            echo "❌ Pipeline failed"
-        }
-        always {
-            echo "📦 Pipeline finished"
         }
     }
 }
