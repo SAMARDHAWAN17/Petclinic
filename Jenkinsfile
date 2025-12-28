@@ -1,20 +1,9 @@
 pipeline {
     agent any
 
-    // 🛡️ SAFETY OPTIONS (MOST IMPORTANT)
-    options {
-        timeout(time: 12, unit: 'MINUTES')   // build auto-kill
-        disableConcurrentBuilds()            // ek time pe ek hi build
-        buildDiscarder(logRotator(numToKeepStr: '5'))
-    }
-
     tools {
         maven 'Maven3'
         jdk 'Java17'
-    }
-
-    environment {
-        MAVEN_OPTS = "-Xmx512m"   // memory limit
     }
 
     stages {
@@ -28,9 +17,7 @@ pipeline {
 
         stage('Maven Build & Test') {
             steps {
-                sh '''
-                mvn clean package -DskipTests=false
-                '''
+                sh 'mvn clean package'
             }
         }
 
@@ -51,9 +38,15 @@ pipeline {
             }
         }
 
-        stage('Trivy Security Scan (SAFE MODE)') {
-            steps {
-                sh '''
-                trivy fs \
-                --skip-dirs .git,target,.m2,node_modules \
-                --severity HIGH,CRI
+  stage('Trivy Security Scan') {
+    steps {
+        sh '''
+        trivy fs \
+        --skip-dirs .git,target,.m2,node_modules \
+        --severity HIGH,CRITICAL \
+        --timeout 5m \
+        --exit-code 0 \
+        .
+        '''
+    }
+}
