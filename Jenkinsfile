@@ -21,17 +21,14 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            environment {
-                SONAR_TOKEN = credentials('sonar-token')
-            }
             steps {
-                sh """
-                mvn sonar:sonar \
-                -Dsonar.projectKey=petclinic \
-                -Dsonar.projectName=petclinic \
-                -Dsonar.host.url=http://localhost:9000 \
-                -Dsonar.login=$SONAR_TOKEN
-                """
+                withSonarQubeEnv('sonarqube') {
+                    sh """
+                    mvn clean verify sonar:sonar \
+                    -Dsonar.projectKey=petclinic \
+                    -Dsonar.projectName=petclinic
+                    """
+                }
             }
         }
     }
