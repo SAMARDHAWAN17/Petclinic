@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven'
+        maven 'Maven3'
+        jdk 'Java17'
     }
 
     stages {
@@ -10,24 +11,33 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/SAMARDHAWAN17/Petclinic.git'
+                    credentialsId: 'github-token',
+                    url: 'https://github.com/SAMARDHAWAN17/Petclinic.git'
             }
         }
 
         stage('Maven Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh 'mvn clean package'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh """
-                    mvn clean verify sonar:sonar \
-                    -Dsonar.projectKey=petclinic \
-                    -Dsonar.projectName=petclinic
-                    """
+                script {
+                    // Jenkins → Tools → SonarQube Scanner
+                    def scannerHome = tool 'SonarScanner'
+
+                    // Jenkins → Manage Jenkins → System → SonarQube servers
+                    withSonarQubeEnv('sonarqube') {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=petclinic \
+                        -Dsonar.projectName=petclinic \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=target
+                        """
+                    }
                 }
             }
         }
